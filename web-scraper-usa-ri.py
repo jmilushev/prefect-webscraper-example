@@ -101,26 +101,16 @@ def initialize_browser( path_to_chromedriver: str, url: str):
 
     driver.get(url)
     return driver
-    options.add_argument("--disable-extensions")
-    # applicable to windows os only
-    options.add_argument("--disable-gpu")
-    # overcome limited resource problems
-    options.add_argument("--disable-dev-shm-usage")
-    # specify download directory
-    options.add_experimental_option(
-        'prefs',
-        {
-            'download.default_directory': tempfile.gettempdir()
-        }
-    )
-    driver = webdriver.Chrome(
-        executable_path=path_to_chromedriver,
-        options=options
-    )
-    assert isinstance(driver, RemoteWebDriver)
-    get_logger().info(f"Selenium service_url: {svc.service_url}")
-    return driver
 
+
+@task (
+       name = "cleanup Selenium driver"
+       )
+def cleanup_selenium(driver):
+    driver.quit()
+    
+    
+    
 @task(
       name="wait until html element is loaded in browser"
       )
@@ -206,10 +196,7 @@ with Flow(
                 #  https://docs.prefect.io/core/concepts/schedules.html
                 CronClock(
                     cron='0 0 * * *',
-                    parameter_defaults=dict(
-                        home_page='https://www.metacritic.com/',
-                        gaming_platform='Switch'
-                    )
+                    parameter_defaults=dict()
                 )
             ]
         )
@@ -227,12 +214,12 @@ with Flow(
     _driver = initialize_browser( _path_to_chromedriver, _home_page_url)
     wait_for_page(_driver, _state_data_element)
     _state_df = task_parse_state_data(_driver, _data_xpath)
-    # _driver.quit()
+
  
     _db = create_db(_db_file)
     #insert into SQLite table
     insert_data(_state_df, _db)
-   
+    cleanup_selenium( _driver)
     
  
     
